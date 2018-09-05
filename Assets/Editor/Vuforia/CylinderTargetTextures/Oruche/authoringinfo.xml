@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VuforiaUnityInfo version="7.0">
+    <TargetSet version="5.0" toolVersion="2.7.4">
+        <CylinderTarget name="oruche_cup" version="3.0" targetId="6e93e66f7861444e99d43eb7e392ba7b" sideLength="550.000000" topDiameter="472.000000" bottomDiameter="472.000000" sideImage="oruche_cup.Body_scaled.jpg"/>
+    </TargetSet>
+</VuforiaUnityInfo>
