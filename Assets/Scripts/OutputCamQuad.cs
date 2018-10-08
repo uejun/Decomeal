@@ -11,19 +11,18 @@ public class OutputCamQuad : MonoBehaviour {
 	GameObject outputQuad;
 	Camera outputCamera;
 
-	Color32[] colors;
 
 	void Start () {
-		outputTexture = new Texture2D (1024, 768, TextureFormat.ARGB32, false);
-		outputQuad = transform.Find ("QuadForOutput").gameObject;
+        outputTexture = new Texture2D(Screen.width, Screen.height, TextureFormat.ARGB32, false);
+        outputQuad = transform.Find ("QuadForOutput").gameObject;
 		outputQuad.transform.localScale = new Vector3 (outputTexture.width, outputTexture.height, outputQuad.transform.localScale.z);
 		outputQuad.GetComponent<Renderer> ().material.mainTexture = outputTexture;
-		colors = new Color32[outputTexture.width * outputTexture.height];
-
+		
 		outputCamera = GetComponent<Camera> ();
+    
 		outputCamera.orthographicSize = outputTexture.height / 2;
 
-		outputMat = new Mat (768, 1024, CvType.CV_8UC3);
+		outputMat = new Mat (Screen.height, Screen.width, CvType.CV_8UC3);
 	}
 
 	void Update () {
@@ -36,9 +35,11 @@ public class OutputCamQuad : MonoBehaviour {
 		if(_mat.channels() == 1) {
 			Mat bgrMat = new Mat (_mat.size (), CvType.CV_8UC3);
 			Imgproc.cvtColor (_mat, bgrMat, Imgproc.COLOR_GRAY2RGB);
-			outputMat = bgrMat;
+            Imgproc.resize(bgrMat, outputMat, outputMat.size());
+			//outputMat = bgrMat;
 		} else {
-			outputMat = _mat;
+            Imgproc.resize(_mat, outputMat, outputMat.size());
+            //outputMat = _mat;
 		}
 		
 		Utils.matToTexture2D (outputMat, outputTexture);

@@ -4,9 +4,10 @@ using UnityEngine;
 using OpenCVForUnity;
 
 public interface ARTargetTracker {
-	Mat binalize(Mat cameraMat, OpenCVForUnity.Rect searchRect, int threshlod1, int threshold2);
-}
 
+	Mat binalize(Mat cameraMat, OpenCVForUnity.Rect searchRect);
+
+}
 
 public class MaguroTracker: ARTargetTracker {
 
@@ -16,7 +17,7 @@ public class MaguroTracker: ARTargetTracker {
 	int H_THRESH_UP = 20;
 	int S_THRESH_LOW = 80;
 
-	public Mat binalize(Mat cameraMat, OpenCVForUnity.Rect searchRect, int threshlod1, int threshlod2) {
+	public Mat binalize(Mat cameraMat, OpenCVForUnity.Rect searchRect) {
 		
 		// 入力画像から探索領域のROI画像を作成
 		Mat roiMat = new Mat (cameraMat, searchRect);
@@ -25,8 +26,8 @@ public class MaguroTracker: ARTargetTracker {
 		var hsvChannels = ARUtil.getHSVChannels(roiMat);
         var yCrCbChannels = ARUtil.getYCrCbChannels(roiMat);
 
-        Mat binaryCr = binalizeByCr(yCrCbChannels[1], roiMat.size(), threshlod1);
-        Mat binaryS = binalizeByS(hsvChannels [1], roiMat.size(), threshlod2);
+        Mat binaryCr = binalizeByCr(yCrCbChannels[1], roiMat.size(), Cr_THRESH_LOW);
+        Mat binaryS = binalizeByS(hsvChannels [1], roiMat.size(), S_THRESH_LOW);
 		// Imgproc.adaptiveThreshold (hsvChannels [2], coffeeBinaryMat, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY_INV, 5, 5);
 
 		Mat wiseAnd = new Mat (roiMat.size (), CvType.CV_8UC1);

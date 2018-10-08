@@ -198,3 +198,143 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
 	}
 
 }
+
+public class ColorTextureCreator {
+    int targetH;
+    int targetS;
+    int targetV;
+    double alpha;
+    
+    public ColorTextureCreator(int h, int s, int v, double alpha) {
+        targetH = h;
+        targetS = s;
+        targetV = v;
+        this.alpha = alpha;
+    }
+
+    public Mat create(Mat srcMat, Mat mask, int srcMeanH, int srcMeanS, int srcMeanV) {
+        // 最終のテクスチャ画像
+        Mat texture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+
+        // srcMatを元のテクスチャとする.
+        //Mat orgTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+        //srcMat.copyTo(orgTexture, mask);
+
+        // 色を変換するのでHSVチャンネルを取得
+        var hsvChannels = ARUtil.getHSVChannels(srcMat);
+
+        Mat H_Texture = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+        //Mat S_Texture = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+        //Mat V_Texture = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+
+        var H_beta = targetH - srcMeanH;
+
+        // HSVをそれぞれ変換
+        hsvChannels[0].convertTo(H_Texture, H_Texture.type(), alpha: 1.0, beta: H_beta);
+        //hsvChannels[1].convertTo(S_Texture, S_Texture.type(), alpha: 0.0, beta: 0.0);
+        //hsvChannels[2].convertTo(V_Texture, V_Texture.type(), alpha: 1.0, beta: 0.0);
+
+        // マージしてRGBに戻す
+        Core.merge(new List<Mat> { H_Texture, hsvChannels[1], hsvChannels[2] }, texture);
+        //Core.merge(new List<Mat> {H_Texture, S_Texture, V_Texture}, texture);
+        Imgproc.cvtColor(texture, texture, Imgproc.COLOR_HSV2RGB);
+
+        return texture;
+    }
+
+    public void alphaBlend(Mat org, Mat texture, Region foodRegion, double alpha)
+    {
+        ARUtil.alphaBlend(org, texture, alpha, foodRegion);
+    }
+
+    public void alphaBlend(Mat org, Mat texture, Mat mask, double alpha)
+    {
+        ARUtil.alphaBlend(org, texture, alpha, mask);
+    }
+}
+
+
+public class OrangeTextureCreator
+{
+
+    public OrangeTextureCreator()
+    {
+    
+    }
+
+    public Mat create(Mat srcMat, Mat mask)
+    {
+        Mat texture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+        Mat orgTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+
+        srcMat.copyTo(orgTexture, mask);
+
+        var hsvChannels = ARUtil.getHSVChannels(orgTexture);
+
+        //Mat targetSchan = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+        //hsvChannels[1].convertTo(targetSchan, targetSchan.type(), alpha: 0.5, beta: 0.0);
+
+        //Core.merge(new List<Mat> { hsvChannels[0], targetSchan, hsvChannels[2] }, texture);
+
+        Mat targetSchan = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+        hsvChannels[0].convertTo(targetSchan, targetSchan.type(), alpha: 1.0, beta: -20.0);
+
+        Core.merge(new List<Mat> { targetSchan, hsvChannels[1], hsvChannels[2] }, texture);
+
+        Imgproc.cvtColor(texture, texture, Imgproc.COLOR_HSV2RGB);
+
+        return texture;
+
+    }
+
+
+    public void alphaBlend(Mat org, Mat texture, Region foodRegion, double alpha)
+    {
+        ARUtil.alphaBlend(org, texture, alpha, foodRegion);
+    }
+
+    public void alphaBlend(Mat org, Mat texture, Mat mask, double alpha)
+    {
+        ARUtil.alphaBlend(org, texture, alpha, mask);
+    }
+
+}
+
+public class NoodleTextureCreator
+{
+
+    Mat _mat;
+
+    public NoodleTextureCreator()
+    {
+        _mat = Imgcodecs.imread(Utils.getFilePath("Noodle Images/hot-spice.jpg"));
+        Imgproc.cvtColor(_mat, _mat, Imgproc.COLOR_BGR2RGB);
+    }
+
+    public Mat create(Mat srcMat, Mat mask)
+    {
+        Mat orgTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+        //Mat src = new Mat(srcMat.size(), srcMat.type());
+        //Imgproc.resize(_mat, src, src.size());
+
+        Imgproc.resize(_mat, _mat, srcMat.size());
+        _mat.copyTo(orgTexture, mask);
+
+        return _mat;
+
+    }
+
+
+    public void alphaBlend(Mat org, Mat texture, Region foodRegion, double alpha)
+    {
+        ARUtil.alphaBlend(org, texture, alpha, foodRegion);
+    }
+
+    public void alphaBlend(Mat org, Mat texture, Mat mask, double alpha)
+    {
+        ARUtil.alphaBlend(org, texture, alpha, mask);
+    }
+
+}
+
+

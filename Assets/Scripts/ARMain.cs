@@ -128,7 +128,7 @@ public class ARMain : MonoBehaviour {
             var regions = new List<Region>();
             foreach (var candidate in regionSet.candidates)
             {
-                if (count > 2) {
+                if (count > 5) {
                     break;
                 }
                 if (candidate == null)
@@ -137,15 +137,10 @@ public class ARMain : MonoBehaviour {
                     break;
                    
                 }
-
-                if (candidate.circularity < 0.4)
-                {
-                    print("candidate circularity is not enougph");
-                    break;
-                }
                 // 領域作成
                 coffeeRegion = new Region(candidate, cameraMat);
                 regions.Add(coffeeRegion);
+                count++;
             }
 
 
@@ -174,7 +169,6 @@ public class ARMain : MonoBehaviour {
 		}
 
     show:
-        print("h");
 		camQuad1.setMat (cameraMat);
 	}
 }

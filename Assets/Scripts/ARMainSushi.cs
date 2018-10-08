@@ -4,10 +4,13 @@ using UnityEngine;
 using Vuforia;
 using OpenCVForUnity;
 
-public class ARSushi : MonoBehaviour {
+public class ARMainSushi : MonoBehaviour {
 
 	// テクスチャ変換のオンオフのためのフラグ
 	public static bool willChange = true;
+
+    // デバッグフラグ
+    public bool isDebug;
 		
 	// 入力用
 	Texture2D cameraTexture; // UnityEngineから取得する画像
@@ -131,35 +134,16 @@ public class ARSushi : MonoBehaviour {
 		
 		try 
         {
-			var hSVChannels = ARUtil.getHSVChannels(cameraMat);
-		    var yCrCbChannels = ARUtil.getYCrCbChannels(cameraMat);
+            var hSVChannels = ARUtil.getHSVChannels(cameraMat);
+            var yCrCbChannels = ARUtil.getYCrCbChannels(cameraMat);
+
+            if (isDebug) {
+                showChannelBinary(hSVChannels, yCrCbChannels);
+            }
 			
-            Mat binaryMat_V = new Mat (cameraMat.size (), CvType.CV_8UC1);
-			Imgproc.threshold (hSVChannels[2], binaryMat_V, v_low_threshold, 255, Imgproc.THRESH_BINARY);
-
-            Mat binaryMat_Cr = new Mat(cameraMat.size(), CvType.CV_8UC1);
-            Imgproc.threshold(yCrCbChannels[1], binaryMat_Cr, cr_low_threshold, 255, Imgproc.THRESH_BINARY);
-            //Core.bitwise_and(binaryROIMat_H_low, binaryROIMat_H_up, binaryROIMat_H);
-
-            Mat binaryMat_Cb = new Mat (cameraMat.size (), CvType.CV_8UC1);
-		    Imgproc.threshold (yCrCbChannels[2], binaryMat_Cb, cb_low_threshold, 255, Imgproc.THRESH_BINARY);
-
-			
-		    Mat binaryMat_S = new Mat (cameraMat.size (), CvType.CV_8UC1);
-		    Imgproc.threshold (hSVChannels [1], binaryMat_S, s_threshold, 255, Imgproc.THRESH_BINARY);
-
-            //Mat wiseand = new Mat (cameraMat.size (), CvType.CV_8UC1);
-            //Core.bitwise_and(binaryROIMat_H, binaryROIMatByS, wiseand);
-
-            camQuad3.setMat(binaryMat_Cr);
-            camQuad4.setMat(binaryMat_S);
-
-
-            var wiseAndBig = _targetTracker.binalize(cameraMat, new OpenCVForUnity.Rect (0, 0, cameraMat.cols (), cameraMat.rows ()), cr_low_threshold, s_threshold);
-
 			var matForDeveloper = cameraMat.clone();
 			
-			var wiseAnd = _targetTracker.binalize(cameraMat, searchRect, cr_low_threshold, s_threshold);
+			var wiseAnd = _targetTracker.binalize(cameraMat, searchRect);
 
 			// 二値画像&探索領域矩形で輪郭探索
 			var contours = ARUtil.findContours (wiseAnd, searchRect.tl ());
@@ -237,4 +221,26 @@ public class ARSushi : MonoBehaviour {
 		camQuad1.setMat (cameraMat);
 	
 	}
+
+
+    void showChannelBinary (List<Mat> hsvChannels, List<Mat> yCrCbChannels) {
+        Mat binaryMat_V = new Mat(cameraMat.size(), CvType.CV_8UC1);
+        Imgproc.threshold(hsvChannels[2], binaryMat_V, v_low_threshold, 255, Imgproc.THRESH_BINARY);
+
+        Mat binaryMat_Cr = new Mat(cameraMat.size(), CvType.CV_8UC1);
+        Imgproc.threshold(yCrCbChannels[1], binaryMat_Cr, cr_low_threshold, 255, Imgproc.THRESH_BINARY);
+        //Core.bitwise_and(binaryROIMat_H_low, binaryROIMat_H_up, binaryROIMat_H);
+
+        Mat binaryMat_Cb = new Mat(cameraMat.size(), CvType.CV_8UC1);
+        Imgproc.threshold(yCrCbChannels[2], binaryMat_Cb, cb_low_threshold, 255, Imgproc.THRESH_BINARY);
+
+
+        Mat binaryMat_S = new Mat(cameraMat.size(), CvType.CV_8UC1);
+        Imgproc.threshold(hsvChannels[1], binaryMat_S, s_threshold, 255, Imgproc.THRESH_BINARY);
+
+        var wiseAndBig = _targetTracker.binalize(cameraMat, new OpenCVForUnity.Rect(0, 0, cameraMat.cols(), cameraMat.rows()));
+
+        camQuad3.setMat(binaryMat_Cr);
+        camQuad4.setMat(binaryMat_S);
+    }
 }
