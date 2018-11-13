@@ -38,10 +38,6 @@ public class ARDrink : ARMainCV {
         // 出力画面 初期化
         outputScreenQuad = outputCamera1.GetComponent<OutputCamQuad>();
 
-        //camQuad2 = outputCamera2.GetComponent<OutputCamQuad>();
-        //camQuad3 = outputCamera3.GetComponent<OutputCamQuad>();
-        //camQuad4 = outputCamera4.GetComponent<OutputCamQuad>();
-
         // 出力先の設定するならココ. 参照: OpenCVForUnityExample.
         outputScreenQuad.setupScreenQuadAndCamera(Screen.height, Screen.width, CvType.CV_8UC3);
 
