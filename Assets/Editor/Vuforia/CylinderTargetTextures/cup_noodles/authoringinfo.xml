@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <VuforiaUnityInfo version="7.0">
     <TargetSet version="5.0" toolVersion="2.7.4">
+        <CylinderTarget name="cupnoodle-normal" version="3.0" targetId="0b9d4d09ad8a4c588fe8d02478ee1916" sideLength="110.000000" topDiameter="95.000000" bottomDiameter="65.000000" sideImage="cupnoodle-normal.Body_scaled.jpg"/>
         <CylinderTarget name="cupnoodle-tomyam" version="3.0" targetId="3ca7407f571948879e3f71f99acde9e9" sideLength="110.000000" topDiameter="95.000000" bottomDiameter="65.000000" sideImage="cupnoodle-tomyam.Body_scaled.jpg"/>
     </TargetSet>
 </VuforiaUnityInfo>

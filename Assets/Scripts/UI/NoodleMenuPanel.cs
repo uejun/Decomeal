@@ -1,23 +1,49 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class NoodleMenuPanel : MonoBehaviour {
 
-    public GameObject ARCamera;
+    public GameObject menuSelectButton1;
+    public GameObject menuSelectButton2;
+    public GameObject menuSelectButton3;
+    public GameObject menuSelectButton4;
+
+    void Start()
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void Open()
+    {
+
+        gameObject.SetActive(true);
+    }
+
+    public void Close()
+    {
+        gameObject.SetActive(false);
+    }
 
     public void SetMenu(string menu)
     {
-        var arMainNoodle = ARCamera.GetComponent<ARMainNoodle>();
-
+       
         switch (menu)
         {
-            case "Spicy":
-                //arMainNoodle.SetTargetColor(new ColorTextureCreator(30, 0, 0, 1.0));
+            case "醤油濃味":
+                NoodleManager.noodleTextureType = NoodleTextureType.thick;
                 break;
-            case "Creamy":
-                //arMainNoodle.SetTargetColor(new ColorTextureCreator(150, 0, 0, 1.0));
+            case "醤油薄味":
+                NoodleManager.noodleTextureType = NoodleTextureType.thin;
+                break;
+            case "トムヤムクン激辛":
+                NoodleManager.noodleTextureType = NoodleTextureType.hot;
+                break;
+            case "トムヤムクンクリーミー":
+                NoodleManager.noodleTextureType = NoodleTextureType.creamy;
                 break;
         }
     }
+    
 }

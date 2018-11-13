@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class DrinkMenuPanel : MonoBehaviour {
 
-    public GameObject ARCamera;
+    public GameObject DrinkManager;
 
     public void SetDrinkMenu(string menu) {
-        var arMainDrink = ARCamera.GetComponent<ARMainDrink>();
+        var arMainDrink = DrinkManager.GetComponent<ARDrink>();
 
         switch(menu) {
             case "Lemon":
@@ -16,8 +16,8 @@ public class DrinkMenuPanel : MonoBehaviour {
             case "Grape":
                 arMainDrink.SetTargetColor(new ColorTextureCreator(150, 0, 0, 1.0));
                 break;
-            case "Peach":
-                arMainDrink.SetTargetColor(new ColorTextureCreator(20, 0, 0, 1.0));
+            case "Wanashi":
+                arMainDrink.SetTargetColor(new ColorTextureCreator(60, 0, 0, 1.0));
                 break;
         }
     }

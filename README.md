@@ -11,3 +11,7 @@
 ## 外部ライブラリ
 - OpenCVForUnity
 - Vuforia
+
+## Vuforia
+Unityのデフォルトの組み込みVuforiaを使用する.
+上部メニューのGameObject -> Vuforiaから各種Vuforiaオブジェクトを追加する

@@ -66,8 +66,7 @@ public class BinaryMatCreator {
 
         // ノイズ除去
         //Imgproc.morphologyEx(wiseAnd, wiseAnd, Imgproc.MORPH_OPEN, new Mat(), new Point(-1, -1), 2);
-        // 膨張
-        Imgproc.dilate(wiseAnd, wiseAnd, Imgproc.getStructuringElement(Imgproc.CV_SHAPE_ELLIPSE, new Size(7, 7)));
+        
         return wiseAnd;
     }
 

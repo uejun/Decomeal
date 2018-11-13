@@ -16,8 +16,8 @@ MonoBehaviour:
     ufoLicenseKey: QVNENFc5Yi8vLy8vQUFBQUtGaDFVTzVWd2srK2s1M3FqKzV5eWRCMDVKaW9jMVFCV0d6KzNEZklpdEpoQjBjd0IvVW9BRGtMT0x2TVJGbzlSRHdubk0rdHk3c3hPSCtJMU5sZnBGQTZPcXQ3eTlTWjdSUmtRNDV6RlFCdDN2NHNKdDdCK05Ma0pCL1pMKzY2YjBvQnhwb0JWU1FuT2JxaTZxYmw0UE1rTkhuNU9LQ2FzM0ZPZm9BOUxRejNHV25Ed1hoZXBuRHhGV1NROEJjMkZlV3o4UWZYRU11alpKeEU2VnpVYkJtU1hzSTVFemNQcVhyZEdaUDJSYWU4R3c0SGpubzNCQUpENEFZN3BwWHNHZGZ4VnBORTVwMzZscC9kMjBvdUhoVldMbTY1WGVkN2RiWE1ubk9HY1BzMktCVEZCdlQzbnkxSzYyU0R5TTNxTFViNEdpaVRIUzROUno4YTNIc1UzS0o3ZXJGSXR2UTJTUGE3bG1kRU14QVQ=
     delayedInitialization: 0
     cameraDeviceModeSetting: -1
-    maxSimultaneousImageTargets: 1
-    maxSimultaneousObjectTargets: 1
+    maxSimultaneousImageTargets: 2
+    maxSimultaneousObjectTargets: 2
     useDelayedLoadingObjectTargets: 0
     cameraDirection: 0
     mirrorVideoBackground: 0
@@ -64,7 +64,7 @@ MonoBehaviour:
     autoInitTracker: 0
     autoStartTracker: 0
   webcam:
-    deviceNameSetInEditor: 'HD Webcam C615 #2'
+    deviceNameSetInEditor: HD Webcam C615
     flipHorizontally: 0
     turnOffWebCam: 0
     renderTextureLayer: 30

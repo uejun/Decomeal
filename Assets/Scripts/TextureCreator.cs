@@ -5,32 +5,30 @@ using OpenCVForUnity;
 using System;
 
 
-public interface TextureCreator {
-	Mat create (Region region);
-	Mat create(List<Region> regions);
-    void alphaBlend(Mat org, Mat texture, Region foodRegion, double alpha);
-    void alphaBlend(Mat org, Mat texture, Mat mask, double alpha);
-    void changeNext();
-}
-
-public class SushiTextureCreator: MonoBehaviour, TextureCreator {
+public class SushiTextureCreator: MonoBehaviour {
 	
-	int currentIndex = 0;
-
-	List<Mat> srcList = new List<Mat>{
-		Imgcodecs.imread (Utils.getFilePath ("Sushi Images/sarmon.jpg")),
-		Imgcodecs.imread (Utils.getFilePath ("Sushi Images/toro.jpg")),
-		Imgcodecs.imread (Utils.getFilePath ("Sushi Images/otoro.jpg")),
-		Imgcodecs.imread (Utils.getFilePath ("Sushi Images/hamachi.jpg"))
-	};
-
-	Mat _mat = Imgcodecs.imread (Utils.getFilePath ("Sushi Images/sarmon.jpg"));
+    Mat mat_Otoro;
+    Mat mat_Tyutoro;
+    Mat mat_Sarmon;
+    Mat mat_Hamachi;
 
 	public SushiTextureCreator() {
-		foreach (var mat in this.srcList) {
-			Imgproc.cvtColor (mat, mat, Imgproc.COLOR_BGR2RGB);
-		}
-	}
+        mat_Sarmon = Imgcodecs.imread(Utils.getFilePath("Sushi Images/sarmon.jpg"));
+        mat_Tyutoro = Imgcodecs.imread(Utils.getFilePath("Sushi Images/toro.jpg"));
+        mat_Otoro = Imgcodecs.imread(Utils.getFilePath("Sushi Images/otoro.jpg"));
+        mat_Hamachi = Imgcodecs.imread(Utils.getFilePath("Sushi Images/hamachi.jpg"));
+
+        //Mat mat_Sarmon = new Mat(_m1.size(), CvType.CV_8UC3);
+        //Mat mat_Tyutoro = new Mat(_m2.size(), CvType.CV_8UC3);
+        //Mat mat_Otoro = new Mat(m3.size(), CvType.CV_8UC3);
+        //Mat mat_Hamachi = new Mat(m4.size(), CvType.CV_8UC3);
+
+        Imgproc.cvtColor(mat_Sarmon, mat_Sarmon, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(mat_Tyutoro, mat_Tyutoro, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(mat_Otoro, mat_Otoro, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(mat_Hamachi, mat_Hamachi, Imgproc.COLOR_BGR2RGB);
+
+    }
 
 
     bool isConcatenate(Region region, List<Region> regions) {
@@ -74,7 +72,7 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
     } 
 
 
-	public Mat create(List<Region> regions) {
+	public Mat create(Mat cameraMat, List<Region> regions) {
         if (regions.Count == 0) {
             return null;
         }
@@ -89,30 +87,37 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
 
         }
 
-        print("regionGroups");
-        print(regionGroups.Values.Count);
-
-		Mat resultTexture = Mat.zeros (regions[0].parentSize, CvType.CV_8UC3);
+        Mat resultTexture = Mat.zeros (regions[0].parentSize, cameraMat.type());
 
         foreach (KeyValuePair<string, List<Region>> pair in regionGroups)
         {
+            // 領域グループ内の領域が一つの場合
             if (pair.Value.Count == 1) {
-                var tex = createForOne(pair.Value[0]);
+                var tex = createForOne(cameraMat, pair.Value[0]);
                 Core.add(resultTexture, tex, resultTexture);
                 continue;
             }
 
+            // 領域グループ内の領域の輪郭点を全て一つのリストにまとめる
             List<Point> points = new List<Point>();
             foreach (var region in pair.Value)
             {
                 points.AddRange(region.candidate.contour2f.toList());
             }
+
+            // グループの輪郭作成
             MatOfPoint2f contours = new MatOfPoint2f();
             contours.fromList(points);
+
+            // グループの輪郭のRotatedRectを得る
             var ellipseRotatedRect = Imgproc.fitEllipse(contours);
-            Mat texture = Mat.zeros(regions[0].parentSize, CvType.CV_8UC3);
-            Mat originalTexture = srcList[currentIndex];
+
+            // 事前用意してあるテクスチャ画像を食品領域のRotatedRectに射影変換
+            Mat originalTexture = selectOriginalTextureImage();
+
+            Mat texture = Mat.zeros(regions[0].parentSize, cameraMat.type());
             ARUtil.affineTransform(originalTexture, texture, ellipseRotatedRect);
+
             Core.add(resultTexture, texture, resultTexture);
 
         }
@@ -120,16 +125,30 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
         return coverBlackArea(resultTexture);
 	}
 
+    private Mat selectOriginalTextureImage() {
+        switch(SushiManager.sushiTextureType) {
+            case SushiTextureType.otoro:
+                return mat_Otoro;
+              
+            case SushiTextureType.tyutoro:
+                return mat_Tyutoro;
+               
+            case SushiTextureType.sarmon:
+                return mat_Sarmon;
+               
+            case SushiTextureType.hamachi:
+                return mat_Hamachi;
+            default:
+                return mat_Otoro;
 
-    public Mat create (Region region) {
-		Mat texture = createForOne(region);
-		return coverBlackArea(texture);
-	}
+        }
+    }
 
 
-	Mat createForOne(Region region) {
-		Mat texture = Mat.zeros (region.parentSize, CvType.CV_8UC3);
-		Mat originalTexture = srcList[currentIndex];
+	Mat createForOne(Mat cameraMat, Region region) {
+		Mat texture = Mat.zeros (region.parentSize, cameraMat.type());
+
+        Mat originalTexture = selectOriginalTextureImage();
 
 		if (region.rect.tl().x == 0) {
 			var aspect = originalTexture.size().height / originalTexture.size().width;
@@ -158,7 +177,7 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
 	// 斜めになったときに現れる、テクスチャがないことによる黒い領域を防ぐ.
 	// 引数のtextureは変更が反映する
 	Mat coverBlackArea(Mat texture) {
-        Mat originalTexture = srcList[currentIndex];
+        Mat originalTexture = selectOriginalTextureImage();
 
         // テクスチャのグレー画像作成
         Mat textureGray = new Mat (texture.size(), CvType.CV_8UC1);
@@ -172,7 +191,7 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
 		Imgproc.dilate (mask, mask, Imgproc.getStructuringElement (Imgproc.MORPH_RECT, new Size (3, 3)));
 		
 		// 背景を大きなテクスチャ画像とする
-        Mat background = new Mat (texture.size(), CvType.CV_8UC3);
+        Mat background = new Mat (texture.size(), texture.type());
 		Imgproc.resize(originalTexture, background, background.size());
 
 		// 黒い領域は、背景のテクスチャ画像で埋める
@@ -189,13 +208,7 @@ public class SushiTextureCreator: MonoBehaviour, TextureCreator {
 		ARUtil.alphaBlend (org, texture, alpha, mask);
 	}
 
-	public void changeNext() {
-		if (currentIndex == srcList.Count -1) {
-			currentIndex = 0;
-		} else {
-			currentIndex += 1;
-		}
-	}
+
 
 }
 
@@ -214,7 +227,7 @@ public class ColorTextureCreator {
 
     public Mat create(Mat srcMat, Mat mask, int srcMeanH, int srcMeanS, int srcMeanV) {
         // 最終のテクスチャ画像
-        Mat texture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+        Mat texture = Mat.zeros(srcMat.size(), srcMat.type());
 
         // srcMatを元のテクスチャとする.
         //Mat orgTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
@@ -264,8 +277,8 @@ public class OrangeTextureCreator
 
     public Mat create(Mat srcMat, Mat mask)
     {
-        Mat texture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
-        Mat orgTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
+        Mat texture = Mat.zeros(srcMat.size(), srcMat.type());
+        Mat orgTexture = Mat.zeros(srcMat.size(), srcMat.type());
 
         srcMat.copyTo(orgTexture, mask);
 
@@ -302,25 +315,91 @@ public class OrangeTextureCreator
 
 public class NoodleTextureCreator
 {
+    int currentIndex = 0;
 
-    Mat _mat;
+    Mat mat_Hot;
+    Mat mat_Creamy;
+    Mat mat_Thick;
+
+    Mat textureMat;
 
     public NoodleTextureCreator()
     {
-        _mat = Imgcodecs.imread(Utils.getFilePath("Noodle Images/hot-spice.jpg"));
-        Imgproc.cvtColor(_mat, _mat, Imgproc.COLOR_BGR2RGB);
+        Mat _mat_Hot = Imgcodecs.imread(Utils.getFilePath("Noodle Images/hot-spice.jpg"));
+        Mat _mat_Creamy = Imgcodecs.imread(Utils.getFilePath("Noodle Images/creamy.png"));
+        Mat _mat_Thick = Imgcodecs.imread(Utils.getFilePath("Noodle Images/thick2.jpg"));
+
+        mat_Hot = new Mat(_mat_Hot.size(), CvType.CV_8UC3);
+        mat_Creamy = new Mat(_mat_Creamy.size(), CvType.CV_8UC3);
+        mat_Thick = new Mat(_mat_Thick.size(), CvType.CV_8UC3);
+
+        //mat_Hot = _mat_Hot.clone();
+        Imgproc.cvtColor(_mat_Hot, mat_Hot, Imgproc.COLOR_BGR2RGB);
+        Imgproc.cvtColor(_mat_Creamy, mat_Creamy, Imgproc.COLOR_BGRA2RGB);
+        Imgproc.cvtColor(_mat_Thick, mat_Thick, Imgproc.COLOR_BGR2RGB);
+
+        textureMat = mat_Hot.clone();
+        
     }
+
+    public void SetMatSize(int width, int height) {
+        textureMat = new Mat(height, width, CvType.CV_8UC3);
+    }
+
 
     public Mat create(Mat srcMat, Mat mask)
     {
-        Mat orgTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
-        //Mat src = new Mat(srcMat.size(), srcMat.type());
-        //Imgproc.resize(_mat, src, src.size());
+        // 最終のテクスチャ画像
+        Mat resultTexture = Mat.zeros(srcMat.size(), srcMat.type());
 
-        Imgproc.resize(_mat, _mat, srcMat.size());
-        _mat.copyTo(orgTexture, mask);
+        if (NoodleManager.noodleTextureType == NoodleTextureType.hot)
+        {
+            Imgproc.resize(mat_Hot, textureMat, srcMat.size());
+            textureMat.copyTo(resultTexture, mask);
+        }
+        else if (NoodleManager.noodleTextureType == NoodleTextureType.creamy)
+        {
+            Imgproc.resize(mat_Creamy, textureMat, srcMat.size());
+            textureMat.copyTo(resultTexture, mask);
+        }
+        else if (NoodleManager.noodleTextureType == NoodleTextureType.thick)
+        {
+            Imgproc.resize(mat_Thick, textureMat, srcMat.size());
+            textureMat.copyTo(resultTexture, mask);
+        }
+        else
+        {
+            // 色を変換するのでHSVチャンネルを取得
+            var hsvChannels = ARUtil.getHSVChannels(srcMat);
 
-        return _mat;
+            //Mat H_Texture = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+            Mat S_Texture = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+            Mat V_Texture = Mat.zeros(srcMat.size(), CvType.CV_8UC1);
+
+            // HSVをそれぞれ変換
+            var S_alpha = 1.0;
+            var V_alpha = 1.0;
+            if (NoodleManager.noodleTextureType == NoodleTextureType.thick)
+            {
+                S_alpha = 0.5;
+                V_alpha = 0.25;
+            }
+            else
+            {
+                S_alpha = 0.3;
+                V_alpha = 1.0;
+            }
+            //hsvChannels[0].convertTo(H_Texture, H_Texture.type(), alpha: 1.0, beta: H_beta);
+            hsvChannels[1].convertTo(S_Texture, S_Texture.type(), alpha: S_alpha, beta: 0.0);
+            hsvChannels[2].convertTo(V_Texture, V_Texture.type(), alpha: V_alpha, beta: 0.0);
+
+            // マージしてRGBに戻す
+            Core.merge(new List<Mat> { hsvChannels[0], S_Texture, V_Texture }, resultTexture);
+
+            Imgproc.cvtColor(resultTexture, resultTexture, Imgproc.COLOR_HSV2RGB);
+        }
+
+        return resultTexture;
 
     }
 

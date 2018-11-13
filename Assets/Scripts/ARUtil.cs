@@ -69,7 +69,7 @@ public class ARUtil : MonoBehaviour {
 	public static void alphaBlend (Mat src1, Mat src2, double alpha, Mat mask) {
 		double beta = 1.0 - alpha;
 
-		Mat dst = new Mat (src1.size (), CvType.CV_8UC3);
+		Mat dst = new Mat (src1.size (), src1.type());
 	
 		Core.addWeighted (src1, alpha, src2, beta, 0.0, dst);
 

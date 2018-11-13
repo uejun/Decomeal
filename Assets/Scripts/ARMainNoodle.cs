@@ -1,10 +1,84 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using OpenCVForUnity;
-using Vuforia;
+using OpenCVForUnityExample;
 
-public class ARMainNoodle : MonoBehaviour {
+public class ARMainNoodle : MonoBehaviour
+{
+    /// <summary>
+    /// Set the name of the device to use.
+    /// </summary>
+    [SerializeField, TooltipAttribute("Set the name of the device to use.")]
+    public string requestedDeviceName = null;
+
+    /// <summary>
+    /// Set the width of WebCamTexture.
+    /// </summary>
+    //[SerializeField, TooltipAttribute("Set the width of WebCamTexture.")]
+    //public int requestedWidth = 640;
+    public int requestedWidth = Screen.width;
+
+    /// <summary>
+    /// Set the height of WebCamTexture.
+    /// </summary>
+    //[SerializeField, TooltipAttribute("Set the height of WebCamTexture.")]
+    //public int requestedHeight = 480;
+    public int requestedHeight = Screen.height;
+
+    /// <summary>
+    /// Set FPS of WebCamTexture.
+    /// </summary>
+    [SerializeField, TooltipAttribute("Set FPS of WebCamTexture.")]
+    public int requestedFPS = 30;
+
+    /// <summary>
+    /// Set whether to use the front facing camera.
+    /// </summary>
+    [SerializeField, TooltipAttribute("Set whether to use the front facing camera.")]
+    public bool requestedIsFrontFacing = false;
+
+    /// <summary>
+    /// The webcam texture.
+    /// </summary>
+    WebCamTexture webCamTexture;
+
+    /// <summary>
+    /// The webcam device.
+    /// </summary>
+    WebCamDevice webCamDevice;
+
+    /// <summary>
+    /// The rgba mat.
+    /// </summary>
+    Mat rgbaMat;
+    Mat rgbMat;
+
+    /// <summary>
+    /// The colors.
+    /// </summary>
+    Color32[] colors;
+
+    /// <summary>
+    /// The texture.
+    /// </summary>
+    Texture2D texture;
+
+    /// <summary>
+    /// Indicates whether this instance is waiting for initialization to complete.
+    /// </summary>
+    bool isInitWaiting = false;
+
+    /// <summary>
+    /// Indicates whether this instance has been initialized.
+    /// </summary>
+    bool hasInitDone = false;
+
+    /// <summary>
+    /// The FPS monitor.
+    /// </summary>
+    FpsMonitor fpsMonitor;
 
     // テクスチャ変換のオンオフのためのフラグ
     public static bool willChange = true;
@@ -16,11 +90,10 @@ public class ARMainNoodle : MonoBehaviour {
     bool doneSetThreshlod;
 
     // 入力用
-    Texture2D cameraTexture; // UnityEngineから取得する画像
     Mat cameraMat; // OpenCVの入力画像. cameraTextureから毎フレームはじめに変換して得る
 
     // 食品領域に貼りつけるテクスチャ. コーヒーならカフェオレの画像など.
-    Mat texture;
+    Mat decorateTextureMat;
 
     // 出力用
     public GameObject outputCamera1; // 変換後の画像を撮影するためのカメラ. インスペクタで設定してください
@@ -33,11 +106,6 @@ public class ARMainNoodle : MonoBehaviour {
 
     // 前回飲料領域を保持
     Region foodRegion;
-
-    // コップターゲット (Cylinder Target)
-    Cup cup;
-
-    public string TargetObjectName = "CupCylinderTarget";
 
     public double cr_threshold_upper;
     public double cr_threshold_lower;
@@ -55,26 +123,9 @@ public class ARMainNoodle : MonoBehaviour {
     public GameObject outputCamera4;
     OutputCamQuad camQuad4;
 
-
-    Image.PIXEL_FORMAT mPixelFormat = Image.PIXEL_FORMAT.UNKNOWN_FORMAT;
-    bool mAccessCameraImage = true;
-    bool mFormatRegistered = false;
-    Vuforia.Image image;
-
     void Start()
     {
-#if UNITY_EDITOR
-        mPixelFormat = Image.PIXEL_FORMAT.RGBA8888; // Need Grayscale for Editor
-#else
-        mPixelFormat = Image.PIXEL_FORMAT.RGB888; // Use RGB888 for mobile
-#endif
-
-        //VuforiaARController.Instance.RegisterVuforiaStartedCallback(OnVuforiaStarted);
-        //VuforiaARController.Instance.RegisterTrackablesUpdatedCallback(OnTrackablesUpdated);
-
-        // 入力画像用 初期
-        cameraMat = new Mat(Screen.height, Screen.width, CvType.CV_8UC3);
-        cameraTexture = new Texture2D(cameraMat.cols(), cameraMat.rows(), TextureFormat.RGBA32, false);
+        InitializeCV();
 
         // 出力画面 初期化
         outputScreenQuad = outputCamera1.GetComponent<OutputCamQuad>();
@@ -82,16 +133,184 @@ public class ARMainNoodle : MonoBehaviour {
         camQuad2 = outputCamera2.GetComponent<OutputCamQuad>();
         camQuad3 = outputCamera3.GetComponent<OutputCamQuad>();
         camQuad4 = outputCamera4.GetComponent<OutputCamQuad>();
+    }
 
-        // コップの初期化
-        var cupTargetBehaviour = GameObject.Find(TargetObjectName).GetComponent<CylinderTargetBehaviour>();
-        cup = new Cup(cupTargetBehaviour, cameraMat.rows());
+    /// <summary>
+    /// Initializes webcam texture.
+    /// </summary>
+    private void InitializeCV()
+    {
+        if (isInitWaiting)
+            return;
+
+        #if UNITY_ANDROID && !UNITY_EDITOR
+            // Set the requestedFPS parameter to avoid the problem of the WebCamTexture image becoming low light on some Android devices. (Pixel, pixel 2)
+            // https://forum.unity.com/threads/android-webcamtexture-in-low-light-only-some-models.520656/
+            // https://forum.unity.com/threads/released-opencv-for-unity.277080/page-33#post-3445178
+            if (requestedIsFrontFacing) {
+                int rearCameraFPS = requestedFPS;
+                requestedFPS = 15;
+                StartCoroutine (_InitializeCV ());
+                requestedFPS = rearCameraFPS;
+            } else {
+                StartCoroutine (_InitializeCV ());
+            }
+        #else
+        StartCoroutine(_InitializeCV());
+        #endif
+    }
+
+    /// <summary>
+    /// Initializes webcam texture by coroutine.
+    /// </summary>
+    private IEnumerator _InitializeCV()
+    {
+        if (hasInitDone)
+            Dispose();
+
+        isInitWaiting = true;
+
+        // Creates the camera
+        if (!String.IsNullOrEmpty(requestedDeviceName))
+        {
+            int requestedDeviceIndex = -1;
+            if (Int32.TryParse(requestedDeviceName, out requestedDeviceIndex))
+            {
+                if (requestedDeviceIndex >= 0 && requestedDeviceIndex < WebCamTexture.devices.Length)
+                {
+                    webCamDevice = WebCamTexture.devices[requestedDeviceIndex];
+                    webCamTexture = new WebCamTexture(webCamDevice.name, requestedWidth, requestedHeight, requestedFPS);
+                }
+            }
+            else
+            {
+                for (int cameraIndex = 0; cameraIndex < WebCamTexture.devices.Length; cameraIndex++)
+                {
+                    if (WebCamTexture.devices[cameraIndex].name == requestedDeviceName)
+                    {
+                        webCamDevice = WebCamTexture.devices[cameraIndex];
+                        webCamTexture = new WebCamTexture(webCamDevice.name, requestedWidth, requestedHeight, requestedFPS);
+                        break;
+                    }
+                }
+            }
+            if (webCamTexture == null)
+                Debug.Log("Cannot find camera device " + requestedDeviceName + ".");
+        }
+
+        if (webCamTexture == null)
+        {
+            // Checks how many and which cameras are available on the device
+            for (int cameraIndex = 0; cameraIndex < WebCamTexture.devices.Length; cameraIndex++)
+            {
+                if (WebCamTexture.devices[cameraIndex].isFrontFacing == requestedIsFrontFacing)
+                {
+                    webCamDevice = WebCamTexture.devices[cameraIndex];
+                    webCamTexture = new WebCamTexture(webCamDevice.name, requestedWidth, requestedHeight, requestedFPS);
+                    break;
+                }
+            }
+        }
+
+        if (webCamTexture == null)
+        {
+            if (WebCamTexture.devices.Length > 0)
+            {
+                webCamDevice = WebCamTexture.devices[0];
+                webCamTexture = new WebCamTexture(webCamDevice.name, requestedWidth, requestedHeight, requestedFPS);
+            }
+            else
+            {
+                Debug.LogError("Camera device does not exist.");
+                isInitWaiting = false;
+                yield break;
+            }
+        }
+
+        // Starts the camera.
+        webCamTexture.Play();
+
+        while (true)
+        {
+            // If you want to use webcamTexture.width and webcamTexture.height on iOS, you have to wait until webcamTexture.didUpdateThisFrame == 1, otherwise these two values will be equal to 16. (http://forum.unity3d.com/threads/webcamtexture-and-error-0x0502.123922/).
+            #if UNITY_IOS && !UNITY_EDITOR && (UNITY_4_6_3 || UNITY_4_6_4 || UNITY_5_0_0 || UNITY_5_0_1)
+                if (webCamTexture.width > 16 && webCamTexture.height > 16) {
+            #else
+            if (webCamTexture.didUpdateThisFrame)
+            {
+                #if UNITY_IOS && !UNITY_EDITOR && UNITY_5_2
+                    while (webCamTexture.width <= 16) {
+                        webCamTexture.GetPixels32 ();
+                        yield return new WaitForEndOfFrame ();
+                    } 
+                #endif
+            #endif
+
+                Debug.Log("name:" + webCamTexture.deviceName + " width:" + webCamTexture.width + " height:" + webCamTexture.height + " fps:" + webCamTexture.requestedFPS);
+                Debug.Log("videoRotationAngle:" + webCamTexture.videoRotationAngle + " videoVerticallyMirrored:" + webCamTexture.videoVerticallyMirrored + " isFrongFacing:" + webCamDevice.isFrontFacing);
+
+                isInitWaiting = false;
+                hasInitDone = true;
+
+                OnCVInited();
+
+                break;
+            }
+            else
+            {
+                yield return null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Releases all resource.
+    /// </summary>
+    private void Dispose()
+    {
+        isInitWaiting = false;
+        hasInitDone = false;
+
+        if (webCamTexture != null)
+        {
+            webCamTexture.Stop();
+            WebCamTexture.Destroy(webCamTexture);
+            webCamTexture = null;
+        }
+        if (rgbaMat != null)
+        {
+            rgbaMat.Dispose();
+            rgbaMat = null;
+        }
+        if (texture != null)
+        {
+            Texture2D.Destroy(texture);
+            texture = null;
+        }
+    }
+
+    /// <summary>
+    /// Raises the webcam texture initialized event.
+    /// </summary>
+    private void OnCVInited()
+    {
+        if (colors == null || colors.Length != webCamTexture.width * webCamTexture.height)
+            colors = new Color32[webCamTexture.width * webCamTexture.height];
+        if (texture == null || texture.width != webCamTexture.width || texture.height != webCamTexture.height)
+            texture = new Texture2D(webCamTexture.width, webCamTexture.height, TextureFormat.RGBA32, false);
+
+        rgbaMat = new Mat(webCamTexture.height, webCamTexture.width, CvType.CV_8UC4);
+        rgbMat = new Mat(webCamTexture.height, webCamTexture.width, CvType.CV_8UC3);
+
+        // 出力先の設定するならココ. 参照: OpenCVForUnityExample.
+        outputScreenQuad.setupScreenQuadAndCamera(Screen.height, Screen.width, CvType.CV_8UC3);
 
         // 飲料領域の初期化
-        foodRegion = new Region(0, 0, cameraMat.cols(), cameraMat.rows());
+        foodRegion = new Region(0, 0, rgbaMat.cols(), rgbaMat.rows());
 
         // テクスチャCreator初期化
         _textureCreator = new NoodleTextureCreator();
+        _textureCreator.SetMatSize(webCamTexture.width, webCamTexture.height);
 
         // BinaryCreator初期化
         binaryMatCreator = new BinaryMatCreator();
@@ -104,92 +323,44 @@ public class ARMainNoodle : MonoBehaviour {
 
     }
 
-    void OnPostRender()
+    void Update()
     {
-        if (doneSetThreshlod)
+        if (hasInitDone && webCamTexture.isPlaying && webCamTexture.didUpdateThisFrame)
         {
-            Process();
+            if (!doneSetThreshlod)
+            {
+                ProcessCalibration();
+            }
+            else
+            {
+                Process();
+            }
         }
-        else
-        {
-            ProcessCalibration();
-        }
-    }
 
-    void OnVuforiaStarted()
-    {
-        // Vuforia has started, now register camera image format
-
-        // Try register camera image format
-        if (CameraDevice.Instance.SetFrameFormat(mPixelFormat, true))
-        {
-            //Debug.Log("Successfully registered pixel format " + mPixelFormat.ToString());
-
-            mFormatRegistered = true;
-
-        }
-        else
-        {
-            //Debug.LogError(
-                //"\nFailed to register pixel format: " + mPixelFormat.ToString() +
-                //"\nThe format may be unsupported by your device." +
-                //"\nConsider using a different pixel format.\n");
-
-            mFormatRegistered = false;
-        }
     }
 
     /// <summary>
-    /// Called each time the Vuforia state is updated
+    /// Raises the destroy event.
     /// </summary>
-    void OnTrackablesUpdated()
+    void OnDestroy()
     {
-        if (mFormatRegistered)
-        {
-            if (mAccessCameraImage)
-            {
-                image = CameraDevice.Instance.GetCameraImage(mPixelFormat);
-
-                if (image != null)
-                {
-                    //Debug.Log(
-                    //    "\nImage Format: " + image.PixelFormat +
-                    //    "\nImage Size:   " + image.Width + "x" + image.Height +
-                    //    "\nBuffer Size:  " + image.BufferWidth + "x" + image.BufferHeight +
-                    //    "\nImage Stride: " + image.Stride + "\n"
-                    //);
-
-                    byte[] pixels = image.Pixels;
-
-                    if (pixels != null && pixels.Length > 0)
-                    {
-                        //Debug.Log(
-                        //    "\nImage pixels: " +
-                        //    pixels[0] + ", " +
-                        //    pixels[1] + ", " +
-                        //    pixels[2] + ", ...\n"
-                        //);
-                    }
-
-
- 
-                }
-            }
-        }
+        Dispose();
     }
+
 
     void ProcessCalibration()
     {
-        // UnityのTexture2DからOpencvのMatに変換
-        int imageWidth = cameraTexture.width;
-        int imageHeight = cameraTexture.height;
-        UnityEngine.Rect wholeRect = new UnityEngine.Rect(0, 0, cameraTexture.width, cameraTexture.height);
-        cameraTexture.ReadPixels(wholeRect, 0, 0, true);
-        //cameraMat = new Mat(imageHeight, imageWidth, CvType.CV_8UC3);
-        //cameraTexture = new Texture2D(imageWidth, imageHeight, TextureFormat.ARGB32, false);
-        //image.CopyToTexture(cameraTexture);
-        Utils.texture2DToMat(cameraTexture, cameraMat);
 
+        Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
+        Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
+
+        int imageWidth = Screen.width;
+        int imageHeight = Screen.height;
+        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
+        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
+
+        //Mat cameraMat = new Mat(rgbaMat.size(), rgbaMat.type());
+        //rgbaMat.copyTo(cameraMat);
 
         Mat gray = new Mat(imageHeight, imageWidth, CvType.CV_8UC1);
         Imgproc.cvtColor(cameraMat, gray, Imgproc.COLOR_RGB2GRAY);
@@ -247,18 +418,18 @@ public class ARMainNoodle : MonoBehaviour {
 
                 if (chStr == "s")
                 {
-                    s_threshold_lower = mean - stddev * 2;
-                    s_threshold_upper = mean + stddev * 2;
+                    s_threshold_lower = mean - stddev * 2 - 30;
+                    s_threshold_upper = mean + stddev * 2 + 30;
                 }
                 else if (chStr == "v")
                 {
-                    v_threshold_lower = mean - stddev * 2;
-                    v_threshold_upper = mean + stddev * 2;
+                    v_threshold_lower = mean - stddev * 2 - 80;
+                    v_threshold_upper = mean + stddev * 2 + 80;
                 }
                 else
                 {
-                    cr_threshold_lower = mean - stddev * 2;
-                    cr_threshold_upper = mean + stddev * 2;
+                    cr_threshold_lower = mean - stddev * 2 - 30;
+                    cr_threshold_upper = mean + stddev * 2 + 30;
                 }
 
             }
@@ -274,10 +445,11 @@ public class ARMainNoodle : MonoBehaviour {
 
     }
 
+    private int loopCount = 0;
 
-    // Update is called once per frame
     void Process()
     {
+        binaryMatCreator = new BinaryMatCreator();
         binaryMatCreator.setCrUpper(cr_threshold_upper);
         binaryMatCreator.setCrLower(cr_threshold_lower);
         binaryMatCreator.setSUpper(s_threshold_upper);
@@ -285,18 +457,16 @@ public class ARMainNoodle : MonoBehaviour {
         binaryMatCreator.setVUpper(v_threshold_upper);
         binaryMatCreator.setVLower(v_threshold_lower);
 
-        // UnityのTexture2DからOpencvのMatに変換
-        // UnityのTexture2DからOpencvのMatに変換
-        int imageWidth = cameraTexture.width;
-        int imageHeight = cameraTexture.height;
-        UnityEngine.Rect wholeRect = new UnityEngine.Rect(0, 0, cameraTexture.width, cameraTexture.height);
-        cameraTexture.ReadPixels(wholeRect, 0, 0, true);
-        //int imageWidth = image.Width;
-        //int imageHeight = image.Height;
-        //cameraMat = new Mat(imageHeight, imageWidth, CvType.CV_8UC3);
-        //cameraTexture = new Texture2D(imageWidth, imageHeight, TextureFormat.ARGB32, false);
-        //image.CopyToTexture(cameraTexture);
-        Utils.texture2DToMat(cameraTexture, cameraMat);
+        Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
+        Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
+
+        int imageWidth = Screen.width;
+        int imageHeight = Screen.height;
+        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
+        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
+
+        //Mat cameraMat = new Mat(rgbaMat.size(), CvType.CV_8UC3);
+        //Imgproc.cvtColor(rgbaMat, cameraMat, Imgproc.COLOR_RGBA2RGB);
 
         //var hsvChs = ARUtil.getHSVChannels(cameraMat);
         //var yCrCbChs = ARUtil.getYCrCbChannels(cameraMat);
@@ -312,37 +482,21 @@ public class ARMainNoodle : MonoBehaviour {
         //goto show;
 
         /* 初期化 */
-        IScorer scorer = null; // 領域判定のスコアラー
-        OpenCVForUnity.Rect searchRect = null; // 探索領域矩形
+        // 探索領域矩形
+        OpenCVForUnity.Rect searchRect = new OpenCVForUnity.Rect(0, 0, cameraMat.cols(), cameraMat.rows());
+        var circularity = 0.2;
 
-        // Vuforiaでのコップ検出可否によって、以下を切り替える
-        // ・探索対象領域
-        // ・スコアー戦略
-        // ・二値化の閾値
-
-        var circularity = 0.0;
-        if (cup.isNotFound())
+        // 領域判定のスコアラー
+        IScorer scorer = null;
+        if (loopCount == 0)
         {
-            // TODO: 高速化のため、対象物の探索領域を前回領域に限定する
-            //if (coffeeRegion.circularity > 0.50) {
-            //  searchRect = coffeeRegion.predictNextSearchRect ();
-            //  searchRect = ARUtil.calcRectWithinMat (searchRect, cameraMat);
-            //} else {
-            //  searchRect = new OpenCVForUnity.Rect (0, 0, cameraMat.cols (), cameraMat.rows ());
-            //}
-            searchRect = new OpenCVForUnity.Rect(0, 0, cameraMat.cols(), cameraMat.rows());
-            circularity = 0.2;
+            scorer = new OrangeScorer(searchRect, searchRect);
         }
-        else if (cup.isTracked())
+        else
         {
-            print("Cup is tracked.");
-            cup.update();
-            // カップの上面の矩形を探索対象矩形とする. 
-            searchRect = cup.getTopSurfaceRect(cameraMat);
-            circularity = 0.1;
+            scorer = new OrangeScorer(searchRect, foodRegion.rect);
         }
 
-        scorer = new OrangeScorer(searchRect, foodRegion.rect);
 
         try
         {
@@ -355,7 +509,6 @@ public class ARMainNoodle : MonoBehaviour {
             // 飲料領域候補群を作成 -> 円形度で除外 -> 候補にスコアをつける -> 最大スコアの候補を取得
             var regionSet = new RegionCandidateSet(contours)
                 .elliminateByArea(searchRect, 0.01, 0.9)
-                .elliminateByCircularity(circularity)
                 .score(scorer)
                 .sort();
 
@@ -374,14 +527,10 @@ public class ARMainNoodle : MonoBehaviour {
 
                 }
 
-                if (candidate.circularity < 0.4)
-                {
-                    print("candidate circularity is not enougph");
-                    break;
-                }
                 // 領域作成
                 foodRegion = new Region(candidate, cameraMat);
                 regions.Add(foodRegion);
+                count++;
             }
 
 
@@ -393,12 +542,12 @@ public class ARMainNoodle : MonoBehaviour {
             }
 
             // テクスチャ作成
-            texture = _textureCreator.create(cameraMat, alphaMask);
-            
+            decorateTextureMat = _textureCreator.create(cameraMat, alphaMask);
+
             if (willChange)
             {
                 // アルファブレンド
-                ARUtil.alphaBlend(cameraMat, texture, alpha, alphaMask);
+                ARUtil.alphaBlend(cameraMat, decorateTextureMat, alpha, alphaMask);
             }
 
             //Debug.Log (candidate.circularity);
@@ -417,6 +566,7 @@ public class ARMainNoodle : MonoBehaviour {
 
     show:
         outputScreenQuad.setMat(cameraMat);
+        loopCount++;
 
     }
 
@@ -424,4 +574,5 @@ public class ARMainNoodle : MonoBehaviour {
     {
         startProcess = true;
     }
+
 }
