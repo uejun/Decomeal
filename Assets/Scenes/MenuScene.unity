@@ -217,7 +217,7 @@ Prefab:
     - target: {fileID: 114242070516914998, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
       propertyPath: m_Text
-      value: "\u30B3\u30FC\u30D2\u30FC"
+      value: Coffee
       objectReference: {fileID: 0}
     - target: {fileID: 114600333420447370, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
@@ -336,7 +336,7 @@ Prefab:
     - target: {fileID: 114242070516914998, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
       propertyPath: m_Text
-      value: "\u5BFF\u53F8"
+      value: Sushi
       objectReference: {fileID: 0}
     - target: {fileID: 114600333420447370, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
@@ -455,7 +455,7 @@ Prefab:
     - target: {fileID: 114242070516914998, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
       propertyPath: m_Text
-      value: "\u30AB\u30C3\u30D7\u30CC\u30FC\u30C9\u30EB"
+      value: Cup noodles
       objectReference: {fileID: 0}
     - target: {fileID: 114600333420447370, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
@@ -791,7 +791,7 @@ Prefab:
     - target: {fileID: 114242070516914998, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}
       propertyPath: m_Text
-      value: "\u7D05\u8336"
+      value: Tea
       objectReference: {fileID: 0}
     - target: {fileID: 114600333420447370, guid: becd50f60e38248758e1725ab720f4a1,
         type: 2}

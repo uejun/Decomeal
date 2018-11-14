@@ -38,29 +38,11 @@ public class ARNoodle : ARMainCV {
         // 出力画面 初期化
         outputScreenQuad = outputCamera1.GetComponent<OutputCamQuad>();
 
-        //camQuad2 = outputCamera2.GetComponent<OutputCamQuad>();
-        //camQuad3 = outputCamera3.GetComponent<OutputCamQuad>();
-        //camQuad4 = outputCamera4.GetComponent<OutputCamQuad>();
-
-        // 出力先の設定するならココ. 参照: OpenCVForUnityExample.
-        outputScreenQuad.setupScreenQuadAndCamera(Screen.height, Screen.width, CvType.CV_8UC3);
-
         // 飲料領域の初期化
-        foodRegion = new Region(0, 0, rgbaMat.cols(), rgbaMat.rows());
+        foodRegion = new Region(0, 0, rgbMat.cols(), rgbMat.rows());
 
         // テクスチャCreator初期化
         _textureCreator = new NoodleTextureCreator();
-        _textureCreator.SetMatSize(webCamTexture.width, webCamTexture.height);
-
-
-        // BinaryCreator初期化
-        binaryMatCreator = new BinaryMatCreator();
-        binaryMatCreator.setCrUpper(cr_threshold_upper);
-        binaryMatCreator.setCrLower(cr_threshold_lower);
-        binaryMatCreator.setSUpper(s_threshold_upper);
-        binaryMatCreator.setSLower(s_threshold_lower);
-        binaryMatCreator.setVUpper(v_threshold_upper);
-        binaryMatCreator.setVLower(v_threshold_lower);
     }
 
     public override void Process()
@@ -78,14 +60,9 @@ public class ARNoodle : ARMainCV {
     void _ProcessCalibration() {
         Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
         Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
-
-        int imageWidth = Screen.width;
-        int imageHeight = Screen.height;
-        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
-        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
-
-        //Mat cameraMat = new Mat(rgbaMat.size(), rgbaMat.type());
-        //rgbaMat.copyTo(cameraMat);
+        Mat cameraMat = rgbMat;
+        int imageWidth = cameraMat.width();
+        int imageHeight = cameraMat.height();
 
         Mat gray = new Mat(imageHeight, imageWidth, CvType.CV_8UC1);
         Imgproc.cvtColor(cameraMat, gray, Imgproc.COLOR_RGB2GRAY);
@@ -184,14 +161,9 @@ public class ARNoodle : ARMainCV {
 
         Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
         Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
-
-        int imageWidth = Screen.width;
-        int imageHeight = Screen.height;
-        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
-        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
-
-        //Mat cameraMat = new Mat(rgbaMat.size(), CvType.CV_8UC3);
-        //Imgproc.cvtColor(rgbaMat, cameraMat, Imgproc.COLOR_RGBA2RGB);
+        Mat cameraMat = rgbMat;
+        int imageWidth = cameraMat.width();
+        int imageHeight = cameraMat.height();
 
         //var hsvChs = ARUtil.getHSVChannels(cameraMat);
         //var yCrCbChs = ARUtil.getYCrCbChannels(cameraMat);

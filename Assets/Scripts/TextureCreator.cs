@@ -321,7 +321,6 @@ public class NoodleTextureCreator
     Mat mat_Creamy;
     Mat mat_Thick;
 
-    Mat textureMat;
 
     public NoodleTextureCreator()
     {
@@ -333,37 +332,32 @@ public class NoodleTextureCreator
         mat_Creamy = new Mat(_mat_Creamy.size(), CvType.CV_8UC3);
         mat_Thick = new Mat(_mat_Thick.size(), CvType.CV_8UC3);
 
-        //mat_Hot = _mat_Hot.clone();
         Imgproc.cvtColor(_mat_Hot, mat_Hot, Imgproc.COLOR_BGR2RGB);
         Imgproc.cvtColor(_mat_Creamy, mat_Creamy, Imgproc.COLOR_BGRA2RGB);
         Imgproc.cvtColor(_mat_Thick, mat_Thick, Imgproc.COLOR_BGR2RGB);
-
-        textureMat = mat_Hot.clone();
         
     }
-
-    public void SetMatSize(int width, int height) {
-        textureMat = new Mat(height, width, CvType.CV_8UC3);
-    }
-
 
     public Mat create(Mat srcMat, Mat mask)
     {
         // 最終のテクスチャ画像
-        Mat resultTexture = Mat.zeros(srcMat.size(), srcMat.type());
+        Mat resultTexture = Mat.zeros(srcMat.size(), CvType.CV_8UC3);
 
         if (NoodleManager.noodleTextureType == NoodleTextureType.hot)
         {
+            Mat textureMat = new Mat(srcMat.size(), CvType.CV_8UC3);
             Imgproc.resize(mat_Hot, textureMat, srcMat.size());
             textureMat.copyTo(resultTexture, mask);
         }
         else if (NoodleManager.noodleTextureType == NoodleTextureType.creamy)
         {
+            Mat textureMat = new Mat(srcMat.size(), CvType.CV_8UC3);
             Imgproc.resize(mat_Creamy, textureMat, srcMat.size());
             textureMat.copyTo(resultTexture, mask);
         }
         else if (NoodleManager.noodleTextureType == NoodleTextureType.thick)
         {
+            Mat textureMat = new Mat(srcMat.size(), CvType.CV_8UC3);
             Imgproc.resize(mat_Thick, textureMat, srcMat.size());
             textureMat.copyTo(resultTexture, mask);
         }
@@ -400,7 +394,6 @@ public class NoodleTextureCreator
         }
 
         return resultTexture;
-
     }
 
 

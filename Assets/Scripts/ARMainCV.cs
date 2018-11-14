@@ -17,14 +17,14 @@ public class ARMainCV : MonoBehaviour {
     /// </summary>
     //[SerializeField, TooltipAttribute("Set the width of WebCamTexture.")]
     //public int requestedWidth = 640;
-    public int requestedWidth = Screen.width;
+    public int requestedWidth = 1912;
 
     /// <summary>
     /// Set the height of WebCamTexture.
     /// </summary>
     //[SerializeField, TooltipAttribute("Set the height of WebCamTexture.")]
     //public int requestedHeight = 480;
-    public int requestedHeight = Screen.height;
+    public int requestedHeight = 958;
 
     /// <summary>
     /// Set FPS of WebCamTexture.

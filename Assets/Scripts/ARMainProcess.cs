@@ -3,50 +3,60 @@ using System.Collections.Generic;
 using UnityEngine;
 using OpenCVForUnity;
 
-public class ARDrink : ARMainCV {
 
+public class ARMainProcess : ARMainCV {
+   
     // テクスチャ変換のオンオフのためのフラグ
     public static bool willChange = true;
-    // 飲料領域を矩形を描画(デバッグ用)
+    // 抽出領域を矩形を描画(デバッグ用)
     public bool shouldDrawRect;
 
     // 出力用
     public GameObject outputCamera1; // 変換後の画像を撮影するためのカメラ. インスペクタで設定してください
-    OutputCamQuad outputScreenQuad; // outputCamera1が撮影するQuad. 変換後の画像を投影する
+    protected OutputCamQuad outputScreenQuad; // outputCamera1が撮影するQuad. 変換後の画像を投影する
 
     // 前回飲料領域を保持
-    Region foodRegion;
-    BinaryMatCreator binaryMatCreator;
+    protected Region foodRegion;
+    protected BinaryMatCreator binaryMatCreator;
+
     ColorTextureCreator _textureCreator;
 
     public double alpha = 0.1;
 
     public double cr_threshold_upper;
     public double cr_threshold_lower;
-    public double s_threshold_upper = 230;
-    public double s_threshold_lower = 50;
+    public double s_threshold_upper;
+    public double s_threshold_lower;
     public double v_threshold_upper;
     public double v_threshold_lower;
 
     bool doneSetThreshlod = false;
     bool startProcess = false;
 
-    int H_sourceMean;
+    protected int H_sourceMean;
 
     public override void OnARMainInited()
     {
         // 出力画面 初期化
         outputScreenQuad = outputCamera1.GetComponent<OutputCamQuad>();
 
+        // 出力先の設定するならココ. 参照: OpenCVForUnityExample.
+        outputScreenQuad.setupScreenQuadAndCamera(Screen.height, Screen.width, CvType.CV_8UC3);
+
         // 飲料領域の初期化
-        foodRegion = new Region(0, 0, rgbMat.cols(), rgbMat.rows());
+        foodRegion = new Region(0, 0, rgbaMat.cols(), rgbaMat.rows());
+
+        OnARMainProcessInited();
 
         // テクスチャCreator初期化
         _textureCreator = new ColorTextureCreator(30, 100, 100, 1.0);
 
     }
 
-    override public void Process() {
+    virtual public void OnARMainProcessInited() {}
+
+    override public void Process()
+    {
         if (!doneSetThreshlod)
         {
             _ProcessCalibration();
@@ -57,13 +67,16 @@ public class ARDrink : ARMainCV {
         }
     }
 
-    void _ProcessCalibration() {
-
+    void _ProcessCalibration()
+    {
         Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
         Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
-        Mat cameraMat = rgbMat;
-        int imageWidth = cameraMat.width();
-        int imageHeight = cameraMat.height();
+
+        int imageWidth = Screen.width;
+        int imageHeight = Screen.height;
+        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
+        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
+
 
         Mat gray = new Mat(imageHeight, imageWidth, CvType.CV_8UC1);
         Imgproc.cvtColor(cameraMat, gray, Imgproc.COLOR_RGB2GRAY);
@@ -122,18 +135,18 @@ public class ARDrink : ARMainCV {
                 // 95%信頼区間
                 if (chStr == "s")
                 {
-                    s_threshold_lower = mean - stddev * 1.96;
-                    s_threshold_upper = mean + stddev * 1.96;
+                    s_threshold_lower = mean - stddev * 1.96 - 20;
+                    s_threshold_upper = mean + stddev * 1.96 + 20;
                 }
                 else if (chStr == "v")
                 {
-                    v_threshold_lower = mean - stddev * 1.96;
-                    v_threshold_upper = mean + stddev * 1.96;
+                    v_threshold_lower = mean - stddev * 1.96 - 80;
+                    v_threshold_upper = mean + stddev * 1.96 + 80;
                 }
                 else
                 {
-                    cr_threshold_lower = mean - stddev * 1.96;
-                    cr_threshold_upper = mean + stddev * 1.96;
+                    cr_threshold_lower = mean - stddev * 1.96 - 20;
+                    cr_threshold_upper = mean + stddev * 1.96 + 20;
                 }
 
             }
@@ -151,22 +164,26 @@ public class ARDrink : ARMainCV {
 
     private int loopCount = 0;
 
-
-    void _Process() {
-
+    void _Process()
+    {
         binaryMatCreator = new BinaryMatCreator();
-        binaryMatCreator.setCrUpper(cr_threshold_upper + 20);
-        binaryMatCreator.setCrLower(cr_threshold_lower - 20);
-        binaryMatCreator.setSUpper(s_threshold_upper + 20);
-        binaryMatCreator.setSLower(s_threshold_lower - 20);
-        binaryMatCreator.setVUpper(v_threshold_upper + 80);
-        binaryMatCreator.setVLower(v_threshold_lower - 80);
+        binaryMatCreator.setCrUpper(cr_threshold_upper);
+        binaryMatCreator.setCrLower(cr_threshold_lower);
+        binaryMatCreator.setSUpper(s_threshold_upper);
+        binaryMatCreator.setSLower(s_threshold_lower);
+        binaryMatCreator.setVUpper(v_threshold_upper);
+        binaryMatCreator.setVLower(v_threshold_lower);
 
         Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
         Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
-        Mat cameraMat = rgbMat;
-        int imageWidth = cameraMat.width();
-        int imageHeight = cameraMat.height();
+
+        int imageWidth = Screen.width;
+        int imageHeight = Screen.height;
+        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
+        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
+
+        //Mat cameraMat = new Mat(rgbaMat.size(), CvType.CV_8UC3);
+        //Imgproc.cvtColor(rgbaMat, cameraMat, Imgproc.COLOR_RGBA2RGB);
 
 
         //var hsvChs = ARUtil.getHSVChannels(cameraMat);
@@ -277,5 +294,4 @@ public class ARDrink : ARMainCV {
     {
         _textureCreator = creator;
     }
-
 }

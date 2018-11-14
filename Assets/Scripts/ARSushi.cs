@@ -41,28 +41,12 @@ public class ARSushi : ARMainCV {
         // 出力画面 初期化
         outputScreenQuad = outputCamera1.GetComponent<OutputCamQuad>();
 
-        //camQuad2 = outputCamera2.GetComponent<OutputCamQuad>();
-        //camQuad3 = outputCamera3.GetComponent<OutputCamQuad>();
-        //camQuad4 = outputCamera4.GetComponent<OutputCamQuad>();
-
-        // 出力先の設定するならココ. 参照: OpenCVForUnityExample.
-        outputScreenQuad.setupScreenQuadAndCamera(Screen.height, Screen.width, CvType.CV_8UC3);
-
         // 飲料領域の初期化
         foodRegion = new Region(0, 0, rgbaMat.cols(), rgbaMat.rows());
 
         // テクスチャCreator
         _textureCreator = new SushiTextureCreator();
 
-
-        // BinaryCreator初期化
-        binaryMatCreator = new BinaryMatCreator();
-        binaryMatCreator.setCrUpper(cr_threshold_upper);
-        binaryMatCreator.setCrLower(cr_threshold_lower);
-        binaryMatCreator.setSUpper(s_threshold_upper);
-        binaryMatCreator.setSLower(s_threshold_lower);
-        binaryMatCreator.setVUpper(v_threshold_upper);
-        binaryMatCreator.setVLower(v_threshold_lower);
     }
 
     public override void Process()
@@ -81,14 +65,9 @@ public class ARSushi : ARMainCV {
     {
         Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
         Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
-
-        int imageWidth = Screen.width;
-        int imageHeight = Screen.height;
-        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
-        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
-
-        //Mat cameraMat = new Mat(rgbaMat.size(), rgbaMat.type());
-        //rgbaMat.copyTo(cameraMat);
+        Mat cameraMat = rgbMat;
+        int imageWidth = cameraMat.width();
+        int imageHeight = cameraMat.height();
 
         Mat gray = new Mat(imageHeight, imageWidth, CvType.CV_8UC1);
         Imgproc.cvtColor(cameraMat, gray, Imgproc.COLOR_RGB2GRAY);
@@ -116,7 +95,6 @@ public class ARSushi : ARMainCV {
 
         if (startProcess)
         {
-            Debug.Log("startProcess");
             var mask = Mat.zeros(imageHeight, imageWidth, CvType.CV_8UC1);
             Imgproc.ellipse(mask, rotatedRect, new Scalar(255), -1);
 
@@ -186,15 +164,10 @@ public class ARSushi : ARMainCV {
         binaryMatCreator.setVLower(v_threshold_lower);
 
         Utils.webCamTextureToMat(webCamTexture, rgbaMat, colors);
-
         Imgproc.cvtColor(rgbaMat, rgbMat, Imgproc.COLOR_RGBA2RGB);
-        int imageWidth = Screen.width;
-        int imageHeight = Screen.height;
-        Mat cameraMat = new Mat(new Size(imageWidth, imageHeight), CvType.CV_8UC3);
-        Imgproc.resize(rgbMat, cameraMat, cameraMat.size());
-
-        //Mat cameraMat = new Mat(rgbaMat.size(), CvType.CV_8UC3);
-        //Imgproc.cvtColor(rgbaMat, cameraMat, Imgproc.COLOR_RGBA2RGB);
+        Mat cameraMat = rgbMat;
+        int imageWidth = cameraMat.width();
+        int imageHeight = cameraMat.height();
 
         var hSVChannels = ARUtil.getHSVChannels(cameraMat);
         var yCrCbChannels = ARUtil.getYCrCbChannels(cameraMat);
